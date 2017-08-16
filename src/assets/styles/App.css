@@ -1,0 +1,71 @@
+body {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+  background-color: #edeff0;
+  color: #576366;
+}
+
+.App-logo-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.App-logo {
+  animation: App-logo-spin infinite 20s linear;
+  height: 40px;
+}
+
+.App-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #333;
+  padding: 20px 10%;
+  color: white;
+}
+
+.App-header h2 {
+  display: inline-block;
+  margin: 0;
+}
+
+.chart-container {
+  margin: 20px 10%;
+  background-color: #3e474f;
+  color: #87929d;
+  min-height: 500px;
+  border-radius: 6px;
+  box-shadow: 0 2px 3px rgba(0,0,0,0.3);
+}
+
+.stocks-container {
+  margin: 20px 10% 40px;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.stock {
+  width: 30%;
+  height: 100px;
+  background-color: white;
+  border-radius: 6px;
+  box-shadow: 0 2px 3px rgba(0,0,0,0.3);
+}
+
+.footer {
+  margin: 0;
+  padding: 10px 0;
+  width: 100%;
+  background-color: #333;
+  color: white;
+  text-align: center;
+}
+
+.footer p {
+  margin: 0;
+}
