@@ -2,13 +2,12 @@ import React, { Component } from 'react';
 import logo from '../assets/img/logo.svg';
 import '../assets/styles/App.css';
 
+import { line } from 'd3-shape';
 import { scaleLinear } from 'd3-scale';
 import { scaleTime } from 'd3-scale';
-import { line } from 'd3-shape';
-import { curveCardinal } from 'd3-shape';
-import * as d3 from "d3";
-import { timeFormat } from 'd3-time-format';
-import { timeParse } from 'd3-time-format';
+import { timeFormat, timeParse } from 'd3-time-format';
+import { extent, max } from 'd3-array';
+import { select } from 'd3-selection';
 
 class SearchForm extends Component {
 
@@ -74,52 +73,80 @@ class Chart extends Component {
   };
 
   createBarChart = () => {
+    // const margin = {top: 20, right: 50, bottom: 20, left: 50},
+    //       width = this.props.size[0] - (margin.left + margin.right),
+    //       height = this.props.size[1] - (margin.top + margin.bottom);
+
+    // const node = this.node;
+    // const parseDate = timeFormat("%m-%d-%Y");
+
+    // const data = this.props.data;
+    // data.forEach(function (d) {
+    //   d.date = parseDate(d.day);
+    // });
+
+    // const dataMax = max(data, function(d){
+    //   return d.count;
+    // });
+
+    // const yScale = scaleLinear()
+    //   .domain([0, dataMax])
+    //   .range([height, 0]);
+
+    // const xScale = scaleTime()
+    //   .domain(extent(data, function(d){
+    //     return d.date;
+    //   }))
+    //   .rangeRound([0, width]);
+
+    // var stockLine = line(data)
+    //     .x(function (d) {
+    //         return xScale(d.date);
+    //     })
+    //     .y(function (d) {
+    //         return yScale(d.count);
+    //     });
   };
 
   render() {
+    const margin = {top: 20, right: 50, bottom: 20, left: 50},
+    width = this.props.size[0] - (margin.left + margin.right),
+    height = this.props.size[1] - (margin.top + margin.bottom);
 
-    const margin = {top: 5, right: 50, bottom: 20, left: 50},
-    width = this.props.width - (margin.left + margin.right),
-    height = this.props.height - (margin.top + margin.bottom);
-
+    const node = this.node;
     const parseDate = timeParse("%m-%d-%Y");
 
     const data = this.props.data;
-
     data.forEach(function (d) {
-        d.date = parseDate(d.day);
+    d.date = parseDate(d.day);
     });
 
-    const x = scaleTime()
-    .domain(d3.extent(data, function (d) {
-        return d.date;
+    const dataMax = max(data, function(d){
+    return d.count;
+    });
+
+    const yScale = scaleLinear()
+    .domain([0, dataMax])
+    .range([height, 0]);
+
+    const xScale = scaleTime()
+    .domain(extent(data, function(d){
+      return d.date;
     }))
     .rangeRound([0, width]);
 
-    const y = scaleLinear()
-    .domain([0,d3.max(data,function(d){
-        return d.count+100;
-    })])
-    .range([height, 0]);
-
-    const chartLine = line()
+    var stockLine = line()
     .x(function (d) {
-        return x(d.date);
+        return xScale(d.date);
     })
     .y(function (d) {
-        return y(d.count);
-    }).curve(curveCardinal);
-
-    const transform='translate(' + margin.left + ',' + margin.top + ')';
+        return yScale(d.count);
+    });
 
     return (
-      <div>
-          <svg width={this.props.width} height={this.props.height}>
-              <g transform={transform}>
-                  <path className="line shadow" d={chartLine(data)} strokeLinecap="round"/>
-              </g>
-          </svg>
-      </div>
+      <svg ref={node => this.node = node} width={this.props.size[0]} height={this.props.size[1]}> 
+        <path className="line shadow" d={stockLine(data)} strokeLinecap="round"/>
+      </svg>
     );
   }
 }
@@ -158,14 +185,14 @@ class App extends Component {
 
   state = {
 		data: [
-        {day:'02-11-2016',count:180},
-        {day:'02-12-2016',count:250},
-        {day:'02-13-2016',count:150},
-        {day:'02-14-2016',count:496},
-        {day:'02-15-2016',count:140},
-        {day:'02-16-2016',count:380},
-        {day:'02-17-2016',count:100},
-        {day:'02-18-2016',count:150}
+      {day:'02-11-2016',count:180},
+      {day:'02-12-2016',count:250},
+      {day:'02-13-2016',count:150},
+      {day:'02-14-2016',count:496},
+      {day:'02-15-2016',count:140},
+      {day:'02-16-2016',count:380},
+      {day:'02-17-2016',count:100},
+      {day:'02-18-2016',count:150}
     ]
 	};
 
