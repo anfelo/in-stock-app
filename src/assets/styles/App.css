@@ -73,6 +73,17 @@ body {
   stroke: none;
 }
 
+.overlay {
+  fill: none;
+  pointer-events: all;
+}
+
+.hover-line {
+  stroke: white;
+  stroke-width: 2px;
+  stroke-dasharray: 3,3;
+}
+
 .stocks-container {
   margin: 20px 10% 40px;
   display: flex;

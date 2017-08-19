@@ -5,9 +5,9 @@ import '../assets/styles/App.css';
 
 import { line } from 'd3-shape';
 import { scaleLinear, scaleTime } from 'd3-scale';
-import { timeParse, timeFormat } from 'd3-time-format';
-import { extent, max } from 'd3-array';
-import { select } from 'd3-selection';
+import { timeParse } from 'd3-time-format';
+import { extent, max, bisect } from 'd3-array';
+import { select, mouse } from 'd3-selection';
 import { axisLeft, axisBottom } from 'd3-axis';
 
 const colors = ['#7dc7f4','#c25975','#53bbb4','#f9845b','#51b46d'];
@@ -109,33 +109,45 @@ class Grid extends Component {
 
 class ToolTip extends Component {
   render() {
+    const points = this.props.tooltip.data;
     let visibility="hidden";
     let transform="";
     let x=0;
     let y=0;
-    const width=150,height=70;
-    const transformText='translate('+width/2+','+(height/2-5)+')';
+    const width=150,height=points.length * 25;
+    const transformText='translate(15,15)';
     let transformArrow="";
 
     if(this.props.tooltip.display===true){
         var position = this.props.tooltip.pos;
 
-        x= position.x;
-        y= position.y;
+        x= position.x + width/2;
+        y= position.y + height;
         visibility="visible";
 
-
-        if(y>height){
-            transform='translate(' + (x-width/2) + ',' + (y-height-20) + ')';
-            transformArrow='translate('+(width/2-20)+','+(height-2)+')';
-        }else if(y<height){
-
-            transform='translate(' + (x-width/2) + ',' + (Math.round(y)+20) + ')';
-            transformArrow='translate('+(width/2-20)+','+0+') rotate(180,20,0)';
+        if(x>width){
+            transform='translate(' + (x-width*3/2 - 10) + ',' + (y-height-20) + ')';
+            transformArrow='translate('+(width - 20)+','+(height/2)+') rotate(-90,20,0)';
+        }else if(x<width){
+            transform='translate(10,' + (y-height-20) + ')';
+            transformArrow='translate(-20,'+(height/2)+') rotate(90,20,0)';
         }
 
     }else{
         visibility="hidden";
+    }
+    let textPoints = [];
+    if(points.length > 0) {
+      textPoints = points.map(function(point,i){
+        return (
+          <g key={i}>
+            <circle r="5" cx={0} cy={i*20} fill={point.color} stroke='black'/>
+            <text is x="10" y={i*20 + 5} text-anchor="start"  font-size="15px" fill="#a9f3ff">
+              {point.name + ': ' + point.point.count}
+            </text>
+          </g>
+        );
+      });
     }
 
     return (
@@ -143,10 +155,9 @@ class ToolTip extends Component {
             <rect class="shadow" is width={width} height={height} rx="5" ry="5" visibility={visibility} fill="#6391da" opacity=".9"/>
             <polygon class="shadow" is points="10,0  30,0  20,10" transform={transformArrow}
                      fill="#6391da" opacity=".9" visibility={visibility}/>
-            <text is visibility={visibility} transform={transformText}>
-                <tspan is x="0" text-anchor="middle" font-size="15px" fill="#ffffff">{this.props.tooltip.data.key}</tspan>
-                <tspan is x="0" text-anchor="middle" dy="25" font-size="20px" fill="#a9f3ff">{this.props.tooltip.data.value+" visits"}</tspan>
-            </text>
+            <g is visibility={visibility} transform={transformText}>
+              {textPoints}
+            </g>
         </g>
     );
   }
@@ -164,12 +175,10 @@ class Dots extends Component {
                 r="7" 
                 cx={_self.props.x(d.date)} 
                 cy={_self.props.y(d.count)} 
-                fill={_self.props.fillColor}
-                stroke= "#3e474f" 
+                fill={(_self.props.dotActive === i) ? _self.props.fillColor : "transparent"}
+                stroke= {(_self.props.dotActive === i) ? "#3e474f" : "transparent" }
                 strokeWidth="5px" 
-                key={i}
-                onMouseOver={_self.props.showToolTip} onMouseOut={_self.props.hideToolTip}
-                data-key={timeFormat("%b %e")(d.date)} data-value={d.count} data-index={_self.props.parentIndex}/>
+                key={i}/>
       )
     });
     return(
@@ -180,35 +189,79 @@ class Dots extends Component {
   }
 }
 
+class Overlay extends Component {
+
+  componentDidMount() {
+    var _this = this;
+    select('.overlay').on("mousemove", _this.onMouseMove);
+  }
+
+  onMouseOver = (e) => {
+    select('.focus').style('display', null);
+  }
+
+  onMouseOut = (e) => {
+    select('.focus').style('display', 'none');
+    this.props.hideToolTip();
+  }
+
+  onMouseMove = () => {
+    const overlay = select('.overlay').node();
+    const x = this.props.x;
+    const data = this.props.data;
+    const timeScales = data[0].data.map(function(d) { return x(d.date); });
+    const i = bisect(timeScales, mouse(overlay)[0], 1);
+    const di = data[0].data[i-1];
+    select('.focus').attr("transform", "translate(" + x(di.date) + ",0)");
+
+    this.props.showToolTip(i,x(di.date),this.props.height/2);
+  }
+
+  render() {
+    return (
+      <rect transform={this.props.transform} className="overlay" width={this.props.width} height={this.props.height} onMouseOver={this.onMouseOver} onMouseOut={this.onMouseOut} /> 
+    );
+  }
+}
+
 class Chart extends Component {
   
   state = {
     data: this.props.data,
-    tooltip:{ display:false,data:{key:'',value:''}},
+    tooltip:{ display:false,data:[]},
     width:this.props.width
   };
 
-  showToolTip = e => {
-    e.target.setAttribute('fill', '#FFFFFF');
+  showToolTip = (index,xPos,yPos) => {
+    // e.target.setAttribute('fill', '#FFFFFF');
+    const points = this.state.data.map(function(stock,i){
+      return {
+        name: stock.name,
+        color: colors[i],
+        point: stock.data[index-1]
+      };
+    });
+
     this.setState({
       tooltip:{
         display:true,
-        data: {
-            key:e.target.getAttribute('data-key'),
-            value:e.target.getAttribute('data-value')
-            },
-        pos:{
-            x:e.target.getAttribute('cx'),
-            y:e.target.getAttribute('cy')
-        }
-      }
+        data: points,
+        pos: {
+          x:xPos,
+          y:yPos
+        },
+      },
+      dotIndex: index-1
     });
   }
 
   hideToolTip = (e) => {
-    const colorIndex = e.target.getAttribute('data-index');
-    e.target.setAttribute('fill', colors[colorIndex]);
-    this.setState({tooltip:{ display:false,data:{key:'',value:''}}});
+    // const colorIndex = e.target.getAttribute('data-index');
+    // e.target.setAttribute('fill', colors[colorIndex]);
+    this.setState({
+      tooltip:{ display:false,data:[]},
+      dotIndex: null
+    });
   }
 
   render() {
@@ -276,7 +329,7 @@ class Chart extends Component {
       return (
         <g key={index}>
           <path className="line shadow" stroke={colors[index]} d={stockLine(stock.data)} strokeLinecap="round"/>
-          <Dots data={stock.data} x={xScale} y={yScale} parentIndex={index} fillColor={colors[index]} showToolTip={_self.showToolTip} hideToolTip={_self.hideToolTip}/>
+          <Dots data={stock.data} x={xScale} y={yScale} parentIndex={index} fillColor={colors[index]} dotActive={_self.state.dotIndex}/>
         </g>
       );
     });
@@ -289,7 +342,11 @@ class Chart extends Component {
           <Axis height={height} axis={xAxis} axisType="x"/>
           { lines }
           <ToolTip tooltip={this.state.tooltip}/>
+          <g className="focus" style={{display:'none'}}>
+            <line className="hover-line" y1="0" y2={height} stroke={'white'} strokeWidth={'2px'} />
+          </g>
         </g>
+        <Overlay transform={transform} width={width} height={height} data={data} x={xScale} showToolTip={_self.showToolTip} hideToolTip={_self.hideToolTip}/>
       </svg>
     );
   }
