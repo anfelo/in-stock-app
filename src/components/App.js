@@ -9,6 +9,7 @@ import { timeParse } from 'd3-time-format';
 import { extent, max, bisect } from 'd3-array';
 import { select, mouse } from 'd3-selection';
 import { axisLeft, axisBottom } from 'd3-axis';
+import { zoom } from 'd3-zoom';
 
 const colors = ['#7dc7f4','#c25975','#53bbb4','#f9845b','#51b46d'];
 
@@ -78,7 +79,7 @@ class Axis extends Component {
   render () {
     const translate = "translate(0,"+(this.props.height)+")";
     return (
-        <g className="axis" transform={this.props.axisType==='x'?translate:""} >
+        <g className={this.props.axisType==='x'?'x axis':'y axis'} transform={this.props.axisType==='x'?translate:""} >
         </g>
     );
   }
@@ -229,8 +230,37 @@ class Chart extends Component {
   state = {
     data: this.props.data,
     tooltip:{ display:false,data:[]},
-    width:this.props.width
+    width:this.props.size[0]
   };
+
+  componentWillMount(){
+    const _self = this;
+    window.onresize = function(event) {
+      _self.updateSize();
+    };
+    // $(window).on('resize', function(e) {
+    //   _self.updateSize();
+    // });
+    this.setState({width:this.props.size[0]});
+  }
+
+  componentDidMount() {
+    this.updateSize();
+  }
+
+  // componentWillUnmount(){
+  //     $(window).off('resize');
+  // }
+ 
+  updateSize(){
+      var node = document.getElementsByClassName("chart-container");
+      var parentWidth=node[0].offsetWidth;
+      if(parentWidth<this.props.size[0]){
+          this.setState({width:parentWidth-20});
+      }else{
+          this.setState({width:this.props.size[0]});
+      }
+  }
 
   showToolTip = (index,xPos,yPos) => {
     // e.target.setAttribute('fill', '#FFFFFF');
@@ -267,7 +297,7 @@ class Chart extends Component {
   render() {
     const _self=this;
     const margin = {top: 40, right: 50, bottom: 60, left: 70},
-    width = this.props.size[0] - (margin.left + margin.right),
+    width = this.state.width - (margin.left + margin.right),
     height = this.props.size[1] - (margin.top + margin.bottom);
 
     const parseDate = timeParse("%m-%d-%Y");
@@ -316,6 +346,19 @@ class Chart extends Component {
     .tickSize(-width, 0, 0)
     .tickFormat("");
 
+    const svgZoom = zoom()
+    .x(xScale)
+    .y(yScale)
+    .scaleExtent([1, 10])
+    .on("zoom", zoomed);
+
+    const zoomed = () => {
+      select(".x.axis").call(xAxis);
+      select(".y.axis").call(yAxis);
+    }
+
+    select('svg').call(zoom);
+
     const stockLine = line()
     .x(function (d) {
         return xScale(d.date);
@@ -335,7 +378,7 @@ class Chart extends Component {
     });
 
     return (
-      <svg width={this.props.size[0]} height={this.props.size[1]}> 
+      <svg width={this.state.width} height={this.props.size[1]}> 
         <g transform={transform}>
           <Grid height={height} grid={yGrid} gridType="y"/>
           <Axis height={height} axis={yAxis} axisType="y"/>
@@ -356,7 +399,7 @@ class ChartContainer extends Component {
   render() {
     return (
       <div className="chart-container">
-        <Chart data={this.props.data} size={[1100,500]}/>
+        <Chart data={this.props.data} size={[1200,500]}/>
       </div>
     );
   }
@@ -396,7 +439,7 @@ class App extends Component {
           {day:'02-15-2016',count:140},
           {day:'02-16-2016',count:380},
           {day:'02-17-2016',count:100},
-          {day:'02-18-2016',count:150}
+          {day:'02-18-2016',count:150},
         ]
       },
       {
@@ -409,7 +452,7 @@ class App extends Component {
           {day:'02-15-2016',count:50},
           {day:'02-16-2016',count:10},
           {day:'02-17-2016',count:50},
-          {day:'02-18-2016',count:70}
+          {day:'02-18-2016',count:70},
         ]
       },
       {
@@ -422,7 +465,7 @@ class App extends Component {
           {day:'02-15-2016',count:380},
           {day:'02-16-2016',count:400},
           {day:'02-17-2016',count:460},
-          {day:'02-18-2016',count:300}
+          {day:'02-18-2016',count:300},
         ]
       },
     ]
