@@ -347,8 +347,6 @@ class Chart extends Component {
     .tickFormat("");
 
     const svgZoom = zoom()
-    .x(xScale)
-    .y(yScale)
     .scaleExtent([1, 10])
     .on("zoom", zoomed);
 
@@ -357,7 +355,7 @@ class Chart extends Component {
       select(".y.axis").call(yAxis);
     }
 
-    select('svg').call(zoom);
+    select('svg').call(svgZoom);
 
     const stockLine = line()
     .x(function (d) {
