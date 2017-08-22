@@ -115,7 +115,7 @@ class ToolTip extends Component {
     let transform="";
     let x=0;
     let y=0;
-    const width=150,height=points.length * 25;
+    const width=200,height=points.length * 30 + 20;
     const transformText='translate(15,15)';
     let transformArrow="";
 
@@ -126,22 +126,24 @@ class ToolTip extends Component {
         y= position.y + height;
         visibility="visible";
 
-        if(x>width){
+        if(x > width + 20){
             transform='translate(' + (x-width*3/2 - 10) + ',' + (y-height-20) + ')';
             transformArrow='translate('+(width - 21)+','+(height/2)+') rotate(-90,20,0)';
-        }else if(x<width){
-            transform='translate(10,' + (y-height-20) + ')';
+        } else if(x < width +20){
+            transform='translate('+(position.x + 10)+',' + (y-height-20) + ')';
             transformArrow='translate(-20,'+(height/2)+') rotate(90,20,0)';
         }
 
-    }else{
+    } else{
         visibility="hidden";
     }
     let textPoints = [];
+    let pointsDate = "";
     if(points.length > 0) {
       textPoints = points.map(function(point,i){
+        pointsDate = point.point.day;
         return (
-          <g key={i}>
+          <g key={i} transform={"translate(0,"+i*20 + 18+")"}>
             <circle r="5" cx={0} cy={i*20} fill={point.color} stroke='black'/>
             <text is x="10" y={i*20 + 5} text-anchor="start"  font-size="15px" fill="#a9f3ff">
               {point.name + ': ' + point.point.close}
@@ -157,6 +159,7 @@ class ToolTip extends Component {
             <polygon class="shadow" is points="10,0  30,0  20,10" transform={transformArrow}
                      fill="#6391da" opacity=".9" visibility={visibility}/>
             <g is visibility={visibility} transform={transformText}>
+              <text is x={width/2-10} y="5" text-anchor="middle" font-size="15px" fill="#f9845b">{pointsDate}</text>
               {textPoints}
             </g>
         </g>
@@ -416,18 +419,20 @@ class Stock extends Component {
   render() {
     return (
       <div className="stock">
-        <p>Here goes one stock</p>
+        <p>{this.props.name}</p>
+        <button type="button" onClick={this.onRemoveStock}>✖</button>
       </div>
     );
   }
 }
 
 const StocksContianer = props => {
+  const stocks = props.data.map(function(stock,i){
+    return <Stock name={stock.name} key={i}/>
+  });
   return (
     <div className="stocks-container">
-      <Stock />
-      <Stock />
-      <Stock />
+      {stocks}
     </div>
   );
 }
@@ -444,7 +449,7 @@ class App extends Component {
   componentDidMount(){
     axios.get('https://www.quandl.com/api/v3/datasets/WIKI/MMM.json?column_index=4&&start_date=2016-01-01&&collapse=monthly&api_key=zNqQuMVnabe3ZQEakpZ3')
       .then(res => {
-        const name = res.data.dataset.name;
+        const name = res.data.dataset.name.substr(0,res.data.dataset.name.indexOf(')')+1);
         const data = res.data.dataset.data.map(row => { 
           return {
             day: row[0],
@@ -479,7 +484,7 @@ class App extends Component {
         <Header />
         <div className="App-main-content">
           <ChartContainer data={this.state.data} zoomLength={this.state.zoomLength} onZoomClick={this.onZoomClick}/>
-          <StocksContianer />
+          <StocksContianer data={this.state.data}/>
         </div>
         <Footer />
       </div>
