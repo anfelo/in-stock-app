@@ -22,8 +22,10 @@ class SearchForm extends Component {
     };
   };
 
-  addStock = e => {
-
+  onAddStock = e => {
+    e.preventDefault();
+    this.props.onAddStock(this.state.name);
+    this.setState({name:""});
   };
 
   onNameChange = e => {
@@ -33,7 +35,7 @@ class SearchForm extends Component {
   render() {
     return (
       <div className="search-form-wrapper">
-        <form className="search-form" onSubmit={this.addStock} >
+        <form className="search-form" onSubmit={this.onAddStock} >
           <input className="name-input" type="text" placeholder="Stock Name" value={this.state.name} onChange={this.onNameChange} required/>
           <button type="submit" id="submit" className="search-button">Add</button>
         </form>
@@ -49,7 +51,15 @@ const Header = props => {
         <img src={logo} className="App-logo" alt="logo" />
         <h2>Welcome to React</h2>
       </div>
-      <SearchForm />
+      <SearchForm onAddStock={props.onAddStock}/>
+    </div>
+  );
+}
+
+const ErrorMessage = props => {
+  return (
+    <div className="error-message">
+      <p>{props.message}</p>
     </div>
   );
 }
@@ -142,17 +152,22 @@ class ToolTip extends Component {
     if(points.length > 0) {
       textPoints = points.map(function(point,i){
         pointsDate = point.point.day;
+        let textOffset = 0;
+        if (i === 0) {
+          textOffset = i*20 + 20;
+        } else {
+          textOffset = 20;
+        }
         return (
-          <g key={i} transform={"translate(0,"+i*20 + 18+")"}>
+          <g key={i} transform={"translate(0,"+ textOffset +")"}>
             <circle r="5" cx={0} cy={i*20} fill={point.color} stroke='black'/>
             <text is x="10" y={i*20 + 5} text-anchor="start"  font-size="15px" fill="#a9f3ff">
-              {point.name + ': ' + point.point.close}
+              {point.code + ': ' + point.point.close}
             </text>
           </g>
         );
       });
     }
-
     return (
         <g transform={transform}>
             <rect class="shadow" is width={width} height={height} rx="5" ry="5" visibility={visibility} fill="#6391da" opacity=".9"/>
@@ -174,14 +189,12 @@ class Dots extends Component {
     const circles=data.map(function(d,i){
       return (
         <circle className="dot" 
-                r="7" 
+                r="5" 
                 cx={_self.props.x(d.date)} 
                 cy={_self.props.y(d.close)} 
                 fill={(_self.props.dotActive === i) ? _self.props.fillColor : "transparent"}
-                stroke= {(_self.props.dotActive === i) ? "#3e474f" : "transparent" }
-                strokeWidth="5px" 
-                key={i}/>
-      )
+                key={i} />
+      );
     });
     return(
         <g>
@@ -261,7 +274,7 @@ class Chart extends Component {
   showToolTip = (index,xPos,yPos) => {
     const points = this.props.data.map(function(stock,i){
       return {
-        name: stock.name,
+        code: stock.code,
         color: colors[i],
         point: stock.data[index-1]
       };
@@ -289,7 +302,7 @@ class Chart extends Component {
 
   render() {
     const _self=this;
-    const margin = {top: 20, right: 50, bottom: 90, left: 70},
+    const margin = {top: 20, right: 30, bottom: 90, left: 70},
     width = this.state.width - (margin.left + margin.right),
     height = this.props.size[1] - (margin.top + margin.bottom);
 
@@ -331,17 +344,18 @@ class Chart extends Component {
     .scale(yScale)
     .ticks(5);
 
-    let tickValues = [];
-    if(data.length > 0){
-      tickValues = data[0].data;
-    }
+    // let tickValues = [];
+    // if(data.length > 0){
+    //   tickValues = data[0].data;
+    // }
     const xAxis = axisBottom()
     .scale(xScale)
     // eslint-disable-next-line
-    .tickValues(tickValues.map(function(d,i){
-      if(i>0) return d.date;
-    }).splice(1))
-    .tickFormat(timeFormat("%d-%b-%y"));
+    // .tickValues(tickValues.map(function(d,i){
+    //   if(i>0) return d.date;
+    // }).splice(1))
+    .tickFormat(timeFormat("%b-%y"))
+    .ticks(12);
 
     const yGrid = axisLeft()
     .scale(yScale)
@@ -416,11 +430,21 @@ class ChartContainer extends Component {
 }
 
 class Stock extends Component {
+
+  onRemoveStock = (e) => {
+    const index = e.target.dataset.index;
+    this.props.onRemoveStock(index);
+  }
+
   render() {
     return (
-      <div className="stock">
-        <p>{this.props.name}</p>
-        <button type="button" onClick={this.onRemoveStock}>✖</button>
+      <div className="stock" >
+        <div className="tongue" style={{"backgroundColor":colors[this.props.index]}}></div>
+        <div className="info">
+          <h3>{this.props.code}</h3>
+          <p>{this.props.name}</p>
+        </div>
+        <button type="button" onClick={this.onRemoveStock} data-index={this.props.index}>✖</button>
       </div>
     );
   }
@@ -428,7 +452,7 @@ class Stock extends Component {
 
 const StocksContianer = props => {
   const stocks = props.data.map(function(stock,i){
-    return <Stock name={stock.name} key={i}/>
+    return <Stock name={stock.name} code={stock.code} key={i} index={i} onRemoveStock={props.onRemoveStock}/>
   });
   return (
     <div className="stocks-container">
@@ -446,28 +470,67 @@ class App extends Component {
     }
   }
 
-  componentDidMount(){
-    axios.get('https://www.quandl.com/api/v3/datasets/WIKI/MMM.json?column_index=4&&start_date=2016-01-01&&collapse=monthly&api_key=zNqQuMVnabe3ZQEakpZ3')
-      .then(res => {
-        const name = res.data.dataset.name.substr(0,res.data.dataset.name.indexOf(')')+1);
-        const data = res.data.dataset.data.map(row => { 
-          return {
-            day: row[0],
-            close: row[1]
-          };
-        });
-        this.setState({
-          data: [
-            {
-              name:name,
-              data:data
-            }
-          ]
-        });
-      })
-      .catch(error => {
-        console.log('Error fetching or parsing data', error);
-      })
+  onRemoveStock = index => {
+    const data = [
+      ...this.state.data.slice(0, index),
+      ...this.state.data.slice(index + 1),
+    ];
+
+    this.setState({
+      data: data,
+    });
+  }
+
+  onAddStock = name => {
+    this.fetchData(name);
+  }
+
+  fetchData = name => {
+    axios.get(`https://www.quandl.com/api/v3/datasets/WIKI/${name}.json?column_index=4&&start_date=2016-01-01&&collapse=daily&api_key=zNqQuMVnabe3ZQEakpZ3`)
+    .then(res => {
+      let codes = [];
+      this.state.data.forEach(function(stock){
+        codes.push(stock.code);
+      });
+      const code = res.data.dataset.dataset_code;
+      const name = res.data.dataset.name.substr(0,res.data.dataset.name.indexOf(')')+1);
+      if (codes.indexOf(code) !== -1) return this.onErrorMessage( name + " It's already being displayed");
+      if(res.data.dataset.data.length === 0) return this.onErrorMessage("Oops! Data not available for: " + name);
+      const data = res.data.dataset.data.map(row => { 
+        return {
+          day: row[0],
+          close: row[1]
+        };
+      });
+      this.setState({
+        data: [
+          ...this.state.data,
+          {
+            code:code,
+            name:name,
+            data:data
+          }
+        ]
+      });
+    })
+    .catch(error => {
+      console.log('Error fetching or parsing data', error);
+      this.onErrorMessage(name + " Is not on US Stock Exchange.");
+    })
+  }
+  
+  onErrorMessage = message => {
+    this.setState({
+      error: message
+    });
+
+    setTimeout(this.onClearError,5000);
+  }
+
+  onClearError = () => {
+    this.setState({
+      error: ""
+    });
   }
 
   onZoomClick = (zoomValue) => {
@@ -481,10 +544,15 @@ class App extends Component {
   render() {
     return (
       <div className="App">
-        <Header />
+        <Header onAddStock={this.onAddStock}/>
         <div className="App-main-content">
+          {
+            (this.state.error)
+            ? <ErrorMessage message={this.state.error}/>
+            : ""
+          }
           <ChartContainer data={this.state.data} zoomLength={this.state.zoomLength} onZoomClick={this.onZoomClick}/>
-          <StocksContianer data={this.state.data}/>
+          <StocksContianer data={this.state.data} onRemoveStock={this.onRemoveStock}/>
         </div>
         <Footer />
       </div>
