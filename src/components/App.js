@@ -1,15 +1,15 @@
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
+import axios from 'axios';
 import logo from '../assets/img/logo.svg';
 import '../assets/styles/App.css';
 
 import { line } from 'd3-shape';
 import { scaleLinear, scaleTime } from 'd3-scale';
-import { timeParse } from 'd3-time-format';
-import { extent, max, bisect } from 'd3-array';
+import { timeParse, timeFormat } from 'd3-time-format';
+import { max, min, bisector } from 'd3-array';
 import { select, mouse } from 'd3-selection';
 import { axisLeft, axisBottom } from 'd3-axis';
-import { zoom } from 'd3-zoom';
 
 const colors = ['#7dc7f4','#c25975','#53bbb4','#f9845b','#51b46d'];
 
@@ -77,7 +77,7 @@ class Axis extends Component {
   }
 
   render () {
-    const translate = "translate(0,"+(this.props.height)+")";
+    const translate = "translate(0,"+(this.props.height + 30)+")";
     return (
         <g className={this.props.axisType==='x'?'x axis':'y axis'} transform={this.props.axisType==='x'?translate:""} >
         </g>
@@ -128,7 +128,7 @@ class ToolTip extends Component {
 
         if(x>width){
             transform='translate(' + (x-width*3/2 - 10) + ',' + (y-height-20) + ')';
-            transformArrow='translate('+(width - 20)+','+(height/2)+') rotate(-90,20,0)';
+            transformArrow='translate('+(width - 21)+','+(height/2)+') rotate(-90,20,0)';
         }else if(x<width){
             transform='translate(10,' + (y-height-20) + ')';
             transformArrow='translate(-20,'+(height/2)+') rotate(90,20,0)';
@@ -144,7 +144,7 @@ class ToolTip extends Component {
           <g key={i}>
             <circle r="5" cx={0} cy={i*20} fill={point.color} stroke='black'/>
             <text is x="10" y={i*20 + 5} text-anchor="start"  font-size="15px" fill="#a9f3ff">
-              {point.name + ': ' + point.point.count}
+              {point.name + ': ' + point.point.close}
             </text>
           </g>
         );
@@ -168,14 +168,12 @@ class Dots extends Component {
   render() {
     const _self=this;
     const data = this.props.data;
-    //.slice(1)
-    // data.pop();
     const circles=data.map(function(d,i){
       return (
         <circle className="dot" 
                 r="7" 
                 cx={_self.props.x(d.date)} 
-                cy={_self.props.y(d.count)} 
+                cy={_self.props.y(d.close)} 
                 fill={(_self.props.dotActive === i) ? _self.props.fillColor : "transparent"}
                 stroke= {(_self.props.dotActive === i) ? "#3e474f" : "transparent" }
                 strokeWidth="5px" 
@@ -210,12 +208,14 @@ class Overlay extends Component {
     const overlay = select('.overlay').node();
     const x = this.props.x;
     const data = this.props.data;
-    const timeScales = data[0].data.map(function(d) { return x(d.date); });
-    const i = bisect(timeScales, mouse(overlay)[0], 1);
-    const di = data[0].data[i-1];
-    select('.focus').attr("transform", "translate(" + x(di.date) + ",0)");
-
-    this.props.showToolTip(i,x(di.date),this.props.height/2);
+    if(data.length > 0){
+      const timeScales = data[0].data.map(function(d) { return x(d.date); });
+      var bisect = bisector(function(d) { return -d; }).right;
+      const i = bisect(timeScales, -mouse(overlay)[0], 1);
+      const di = data[0].data[i-1];
+      select('.focus').attr("transform", "translate(" + x(di.date) + ",0)");
+      this.props.showToolTip(i,x(di.date),this.props.height/2);
+    }
   }
 
   render() {
@@ -228,9 +228,9 @@ class Overlay extends Component {
 class Chart extends Component {
   
   state = {
-    data: this.props.data,
     tooltip:{ display:false,data:[]},
-    width:this.props.size[0]
+    width:this.props.size[0],
+    zoomLength: this.props.zoomLength
   };
 
   componentWillMount(){
@@ -238,21 +238,14 @@ class Chart extends Component {
     window.onresize = function(event) {
       _self.updateSize();
     };
-    // $(window).on('resize', function(e) {
-    //   _self.updateSize();
-    // });
     this.setState({width:this.props.size[0]});
   }
 
   componentDidMount() {
     this.updateSize();
   }
-
-  // componentWillUnmount(){
-  //     $(window).off('resize');
-  // }
  
-  updateSize(){
+  updateSize = () => {
       var node = document.getElementsByClassName("chart-container");
       var parentWidth=node[0].offsetWidth;
       if(parentWidth<this.props.size[0]){
@@ -263,8 +256,7 @@ class Chart extends Component {
   }
 
   showToolTip = (index,xPos,yPos) => {
-    // e.target.setAttribute('fill', '#FFFFFF');
-    const points = this.state.data.map(function(stock,i){
+    const points = this.props.data.map(function(stock,i){
       return {
         name: stock.name,
         color: colors[i],
@@ -286,8 +278,6 @@ class Chart extends Component {
   }
 
   hideToolTip = (e) => {
-    // const colorIndex = e.target.getAttribute('data-index');
-    // e.target.setAttribute('fill', colors[colorIndex]);
     this.setState({
       tooltip:{ display:false,data:[]},
       dotIndex: null
@@ -296,13 +286,13 @@ class Chart extends Component {
 
   render() {
     const _self=this;
-    const margin = {top: 40, right: 50, bottom: 60, left: 70},
+    const margin = {top: 20, right: 50, bottom: 90, left: 70},
     width = this.state.width - (margin.left + margin.right),
     height = this.props.size[1] - (margin.top + margin.bottom);
 
-    const parseDate = timeParse("%m-%d-%Y");
+    const parseDate = timeParse("%Y-%m-%d");
 
-    const data = this.state.data;
+    const data = this.props.data;
     data.forEach(function (stock) {
       stock.data.forEach(function (d){
         d.date = parseDate(d.day);
@@ -315,7 +305,15 @@ class Chart extends Component {
     });
 
     const dataMax = max(allValues, function(d){
-      return d.count + 100;
+      return d.close + 100;
+    });
+
+    const maxDate = max(allValues, function(d){
+      return d.date;
+    });
+
+    const minDate = min(allValues, function(d){
+      return d.date;
     });
 
     const yScale = scaleLinear()
@@ -323,22 +321,24 @@ class Chart extends Component {
     .range([height, 0]);
 
     const xScale = scaleTime()
-    .domain(extent(data[0].data, function(d){
-      return d.date;
-    }))
+    .domain([minDate, maxDate])
     .rangeRound([0, width]);
 
     const yAxis = axisLeft()
     .scale(yScale)
     .ticks(5);
 
+    let tickValues = [];
+    if(data.length > 0){
+      tickValues = data[0].data;
+    }
     const xAxis = axisBottom()
     .scale(xScale)
     // eslint-disable-next-line
-    .tickValues(data[0].data.map(function(d,i){
+    .tickValues(tickValues.map(function(d,i){
       if(i>0) return d.date;
     }).splice(1))
-    .ticks(4);
+    .tickFormat(timeFormat("%d-%b-%y"));
 
     const yGrid = axisLeft()
     .scale(yScale)
@@ -346,23 +346,12 @@ class Chart extends Component {
     .tickSize(-width, 0, 0)
     .tickFormat("");
 
-    const svgZoom = zoom()
-    .scaleExtent([1, 10])
-    .on("zoom", zoomed);
-
-    const zoomed = () => {
-      select(".x.axis").call(xAxis);
-      select(".y.axis").call(yAxis);
-    }
-
-    select('svg').call(svgZoom);
-
     const stockLine = line()
     .x(function (d) {
         return xScale(d.date);
     })
     .y(function (d) {
-        return yScale(d.count);
+        return yScale(d.close);
     });
 
     const transform ='translate(' + margin.left + ',' + margin.top + ')';
@@ -376,7 +365,7 @@ class Chart extends Component {
     });
 
     return (
-      <svg width={this.state.width} height={this.props.size[1]}> 
+      <svg width={this.state.width} height={this.props.size[1]} > 
         <g transform={transform}>
           <Grid height={height} grid={yGrid} gridType="y"/>
           <Axis height={height} axis={yAxis} axisType="y"/>
@@ -393,11 +382,31 @@ class Chart extends Component {
   }
 }
 
+class ZoomOptions extends Component {
+
+  onClick = (e) => {
+    const zoomIndex = e.target.dataset.id;
+    this.props.onZoomClick(zoomIndex);
+  }
+
+  render() {
+    return (
+      <div className="zoom-options">
+        <button type="button" onClick={this.onClick} data-id={1}>1m</button>
+        <button type="button" onClick={this.onClick} data-id={2}>3m</button>
+        <button type="button" onClick={this.onClick} data-id={3}>6m</button>
+        <button type="button" onClick={this.onClick} data-id={4}>All</button>
+      </div>
+    );
+  }
+}
+
 class ChartContainer extends Component {
   render() {
     return (
       <div className="chart-container">
-        <Chart data={this.props.data} size={[1200,500]}/>
+        <ZoomOptions onZoomClick={this.props.onZoomClick}/>
+        <Chart data={this.props.data} size={[1200,500]} zoomLength={this.props.zoomLength}/>
       </div>
     );
   }
@@ -425,56 +434,51 @@ const StocksContianer = props => {
 
 class App extends Component {
 
-  state = {
-		data: [ 
-      {
-        name:'test1',
-        data:[
-          {day:'02-11-2016',count:180},
-          {day:'02-12-2016',count:250},
-          {day:'02-13-2016',count:150},
-          {day:'02-14-2016',count:496},
-          {day:'02-15-2016',count:140},
-          {day:'02-16-2016',count:380},
-          {day:'02-17-2016',count:100},
-          {day:'02-18-2016',count:150},
-        ]
-      },
-      {
-        name:'test2',
-        data:[
-          {day:'02-11-2016',count:60},
-          {day:'02-12-2016',count:110},
-          {day:'02-13-2016',count:80},
-          {day:'02-14-2016',count:89},
-          {day:'02-15-2016',count:50},
-          {day:'02-16-2016',count:10},
-          {day:'02-17-2016',count:50},
-          {day:'02-18-2016',count:70},
-        ]
-      },
-      {
-        name:'test3',
-        data:[
-          {day:'02-11-2016',count:400},
-          {day:'02-12-2016',count:550},
-          {day:'02-13-2016',count:500},
-          {day:'02-14-2016',count:300},
-          {day:'02-15-2016',count:380},
-          {day:'02-16-2016',count:400},
-          {day:'02-17-2016',count:460},
-          {day:'02-18-2016',count:300},
-        ]
-      },
-    ]
-	};
+  constructor() {
+    super()
+    this.state = {
+      data: [],
+    }
+  }
+
+  componentDidMount(){
+    axios.get('https://www.quandl.com/api/v3/datasets/WIKI/MMM.json?column_index=4&&start_date=2016-01-01&&collapse=monthly&api_key=zNqQuMVnabe3ZQEakpZ3')
+      .then(res => {
+        const name = res.data.dataset.name;
+        const data = res.data.dataset.data.map(row => { 
+          return {
+            day: row[0],
+            close: row[1]
+          };
+        });
+        this.setState({
+          data: [
+            {
+              name:name,
+              data:data
+            }
+          ]
+        });
+      })
+      .catch(error => {
+        console.log('Error fetching or parsing data', error);
+      })
+  }
+
+  onZoomClick = (zoomValue) => {
+    if(zoomValue !== this.state.zoomLength){
+      this.setState({
+        zoomLength: +zoomValue
+      });
+    }
+  };
 
   render() {
     return (
       <div className="App">
         <Header />
         <div className="App-main-content">
-          <ChartContainer data={this.state.data}/>
+          <ChartContainer data={this.state.data} zoomLength={this.state.zoomLength} onZoomClick={this.onZoomClick}/>
           <StocksContianer />
         </div>
         <Footer />

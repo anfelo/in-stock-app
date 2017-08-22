@@ -39,6 +39,22 @@ body {
   min-height: 500px;
   border-radius: 6px;
   box-shadow: 0 2px 3px rgba(0,0,0,0.3);
+  overflow: hidden;
+}
+
+.zoom-options {
+  display: inline-block;
+  margin: 20px 0 0 40px;
+}
+
+.zoom-options button {
+  margin-right: 5px;
+  padding: 3px 8px;
+  background-color: transparent;
+  color:#7dc7f4;
+  border: 2px solid #7dc7f4;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
 .line {
@@ -62,6 +78,10 @@ body {
   font-size: 14px;
   fill:#bbc7d9;
   opacity: 1;
+}
+
+.x.axis .tick text {
+  transform: rotate(-45deg);
 }
 
 .y-grid .tick line{
