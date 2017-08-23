@@ -64,6 +64,14 @@ const ErrorMessage = props => {
   );
 }
 
+const AddStockDisplay = () => {
+  return (
+    <div className="add-stock-message">
+      <h1>Add Stocks</h1>
+    </div>
+  );
+}
+
 const Footer = () => {
   return (
     <div className="footer">
@@ -147,25 +155,32 @@ class ToolTip extends Component {
     } else{
         visibility="hidden";
     }
+
     let textPoints = [];
     let pointsDate = "";
+    let indexOffset = 0;
     if(points.length > 0) {
       textPoints = points.map(function(point,i){
-        pointsDate = point.point.day;
-        let textOffset = 0;
-        if (i === 0) {
-          textOffset = i*20 + 20;
-        } else {
-          textOffset = 20;
+        if(point !== null)
+        {
+          pointsDate = point.point.day;
+          let textOffset = 0;
+          if (indexOffset === 0) {
+            textOffset = indexOffset * 20 + 20;
+          } else {
+            textOffset = 20;
+          }
+          indexOffset++;
+          return (
+            <g key={i} transform={"translate(0,"+ textOffset +")"}>
+              <circle r="5" cx={0} cy={indexOffset * 20} fill={point.color} stroke='black'/>
+              <text is x="10" y={indexOffset * 20 + 5} text-anchor="start"  font-size="15px" fill="#a9f3ff">
+                {point.code + ': ' + point.point.close}
+              </text>
+            </g>
+          );  
         }
-        return (
-          <g key={i} transform={"translate(0,"+ textOffset +")"}>
-            <circle r="5" cx={0} cy={i*20} fill={point.color} stroke='black'/>
-            <text is x="10" y={i*20 + 5} text-anchor="start"  font-size="15px" fill="#a9f3ff">
-              {point.code + ': ' + point.point.close}
-            </text>
-          </g>
-        );
+        return null;  
       });
     }
     return (
@@ -225,10 +240,15 @@ class Overlay extends Component {
     const x = this.props.x;
     const data = this.props.data;
     if(data.length > 0){
-      const timeScales = data[0].data.map(function(d) { return x(d.date); });
+      let maxLenIndex = 0;
+      data.forEach(function(stock,index){
+        if(index === 0) return;
+        if(stock.data.length > data[maxLenIndex].data.length) return maxLenIndex = index;
+      });
+      const timeScales = data[maxLenIndex].data.map(function(d) { return x(d.date); });
       var bisect = bisector(function(d) { return -d; }).right;
       const i = bisect(timeScales, -mouse(overlay)[0], 1);
-      const di = data[0].data[i-1];
+      const di = data[maxLenIndex].data[i-1];
       select('.focus').attr("transform", "translate(" + x(di.date) + ",0)");
       this.props.showToolTip(i,x(di.date),this.props.height/2);
     }
@@ -273,11 +293,14 @@ class Chart extends Component {
 
   showToolTip = (index,xPos,yPos) => {
     const points = this.props.data.map(function(stock,i){
-      return {
-        code: stock.code,
-        color: colors[i],
-        point: stock.data[index-1]
-      };
+      if(stock.data[index-1]){
+        return {
+          code: stock.code,
+          color: colors[i],
+          point: stock.data[index-1]
+        };
+      }
+      return null;
     });
 
     this.setState({
@@ -551,7 +574,11 @@ class App extends Component {
             ? <ErrorMessage message={this.state.error}/>
             : ""
           }
-          <ChartContainer data={this.state.data} zoomLength={this.state.zoomLength} onZoomClick={this.onZoomClick}/>
+          {
+            (this.state.data.length > 0)
+            ? <ChartContainer data={this.state.data} zoomLength={this.state.zoomLength} onZoomClick={this.onZoomClick}/> 
+            : <AddStockDisplay />
+          }
           <StocksContianer data={this.state.data} onRemoveStock={this.onRemoveStock}/>
         </div>
         <Footer />

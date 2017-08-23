@@ -46,7 +46,22 @@ body {
   margin: 0;
 }
 
-.chart-container {
+.add-stock-message {
+  display: flex;
+  padding: 20px 0;
+}
+
+.add-stock-message h1 {
+  width: 50%;
+  margin: auto;
+  padding: 150px 0;
+  border: 5px dotted #576366;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.chart-container,
+.add-stock-message {
   margin: 20px 10%;
   background-color: #3e474f;
   color: #87929d;
@@ -186,7 +201,7 @@ body {
 
 .footer {
   margin: 0;
-  padding: 10px 0;
+  padding: 15px 0;
   width: 100%;
   background-color: #333;
   color: white;
