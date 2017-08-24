@@ -32,6 +32,38 @@ body {
   margin: 0;
 }
 
+.search-button {
+  background-color: #39add1; 
+  border: 2px solid #39add1;
+  color: white;
+  padding: 6px 10px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.name-input {
+  width: 130px;
+  box-sizing: border-box;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+  background-color: white;
+  background-repeat: no-repeat;
+  padding: 6px 10px 6px 12px;
+  -webkit-transition: width 0.4s ease-in-out;
+  transition: width 0.4s ease-in-out;
+}
+
+.name-input:focus {
+  width: 300px;
+  outline: none;
+}
+
 .error-message {
   margin: 10px 10%;
   padding: 15px 0;
