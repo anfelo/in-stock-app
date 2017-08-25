@@ -7,7 +7,7 @@ class Stock extends Component {
 	
 	onRemoveStock = (e) => {
 		const index = e.target.dataset.index;
-		this.props.onRemoveStock(index);
+		this.props.onRemoveStock(+index);
 	}
 
 	render() {

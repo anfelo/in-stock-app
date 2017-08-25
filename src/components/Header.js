@@ -7,7 +7,7 @@ const Header = props => {
     <div className="App-header">
       <div className="App-logo-wrapper">
         <img src={logo} className="App-logo" alt="logo" />
-        <h2>Welcome to React</h2>
+        <h2>inStock</h2>
       </div>
       <SearchForm onAddStock={props.onAddStock}/>
     </div>

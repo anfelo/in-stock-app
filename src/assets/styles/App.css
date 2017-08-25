@@ -86,8 +86,8 @@ body {
 .add-stock-message h1 {
   width: 50%;
   margin: auto;
-  padding: 150px 0;
-  border: 5px dotted #576366;
+  padding: 150px 20px;
+  border: 5px dashed #576366;
   border-radius: 4px;
   text-align: center;
 }
